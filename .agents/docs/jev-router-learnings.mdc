@@ -1,0 +1,58 @@
+---
+description: Verified Claude Code and Jev behaviors behind jev-router. Read before changing hooks, skills, questions, or policy.
+alwaysApply: false
+---
+
+# jev-router learnings
+
+## Claude Code mechanics (verified on CC 2.1.280, 2026-09-26/27)
+
+*Helpful when:* changing how effort or model is applied, or adding a hook.
+
+- **No hook output sets effort or model.** UserPromptSubmit supports only `additionalContext`, `decision`, and `sessionTitle`.
+- **A skill's `effort:` frontmatter applies for the rest of the turn once Claude loads it.**
+  - The transcript shows `perTurnEffort:<level>` and `attributionSkill` on the following assistant entries.
+  - The next prompt reverts to the session level.
+  - `cache_read_input_tokens` kept rising through the change and the revert on Opus 5.5.
+- **Subagents spawned during a routed turn inherit its effort** (seen in the subagent transcript's `perTurnEffort`).
+- **`$CLAUDE_EFFORT` is unset in UserPromptSubmit and UserPromptExpansion**, and neither gets an `effort` field; PreToolUse gets both.
+  - `lib/transcript.ts` reads the session level instead: the latest main-chain assistant entry with `attributionSkill == null`.
+- **UserPromptSubmit receives the raw prompt text for slash commands** (`"/jev off\n"`). `/jev` is parsed there, so both install modes share one code path.
+- **Skill frontmatter hooks:**
+  - They register the moment the skill is invoked, and they fire for that same prompt's UserPromptSubmit.
+  - They do NOT survive `--resume`.
+  - `${CLAUDE_SKILL_DIR}` is not set in their commands. `CLAUDE_PLUGIN_ROOT` is: the skill's own directory for a personal or project skill, and the plugin root for a plugin skill. That's why the frontmatter commands use `${CLAUDE_SKILL_DIR:-$CLAUDE_PLUGIN_ROOT}/scripts/run`, which is absent at a plugin root.
+- **PreToolUse(Agent) `updatedInput` works without `permissionDecision`.**
+  - PostToolUse `resolvedModel` confirms the change.
+  - Also return `additionalContext`, or Claude reports the model it asked for rather than the one that ran.
+- **Plugin skills are namespaced `jev:<name>`; skill installs use the bare name.** `lib/config.ts` detects which applies from whether `.claude-plugin/plugin.json` sits four levels above `lib/`.
+- **Hooks inherit the environment of the process that launched Claude Code.** GUI launches may lack Bun or Node on `PATH`, hence the fallback locations in `scripts/run`.
+
+## Distribution
+
+*Helpful when:* changing layout or install instructions.
+
+- `npx skills add <repo> -g -a claude-code -s '*' -y` finds every `skills/*/SKILL.md`, copies each folder whole, and keeps file modes.
+  - Tier skills are therefore named `jev-<level>`; a bare `low` would land as a global skill called `low`.
+- Node type stripping needs explicit `.ts` import extensions, `import type` for types, and a `package.json` with `"type": "module"` next to the scripts, because skill installs don't copy the repo root.
+
+## Headless test recipe
+
+*Helpful when:* re-running end-to-end checks.
+
+- Pipe prompts on stdin, because `--allowedTools` is variadic and swallows a trailing prompt argument.
+- Resume with `--resume <id>`; `-r` errored in nested runs.
+- Unset `CLAUDECODE` and the `CLAUDE_CODE_*` env vars before a nested `claude -p`.
+- Set `JEV_ROUTER_DATA` to a scratch dir to isolate state.
+- Skill-install mode loses its hooks on resume. Send several prompts in one process with `--input-format stream-json --output-format stream-json --verbose`, one `{"type":"user","message":{"role":"user","content":"..."}}` per line.
+
+## Jev question design
+
+*Helpful when:* editing `lib/questions.ts` or `lib/policy.ts`.
+
+- **"Independent judgment" in the Score instruction sent a vague build ("build a fitness app") to `max`.** Keep the instruction about verification and edge-case testing.
+- **The first set of level descriptions only covered software work**, so copy, doc, and analysis tasks fell to `low`. Level 1 now names documents, copy, plans, and focused analysis. Level 2 names debugging and in-depth investigation.
+- **A `no_work_requested` Noul rule broke more cases than it fixed** once the levels were broadened, so it was removed.
+- **The verification floor applies only when Score confidence is below 0.85.** Wherever a confident Score disagreed with the floor, the Score was right.
+- **The subagent Choice asks about the kind of work (`judgment` / `delegated`), not a model name.** Code maps the answer to the configured models, so the question doesn't change when models do.
+- **Jev answers each question independently**, so dropping a question doesn't change the others' answers. `--replay` stays valid after a removal, but not after a rewording.

@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "jev-router",
+  "version": "0.1.0",
+  "description": "Jev-powered effort and subagent model routing for Claude Code",
+  "owner": {
+    "name": "jjjjjjjjjjjjjjjjacob",
+    "url": "https://github.com/jjjjjjjjjjjjjjjjacob"
+  },
+  "plugins": [
+    {
+      "name": "jev",
+      "description": "Per-turn effort routing and subagent model routing with TypeSafe's Jev. Use: /jev",
+      "version": "0.1.0",
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/jjjjjjjjjjjjjjjjacob/jev-router"
+    }
+  ]
+}

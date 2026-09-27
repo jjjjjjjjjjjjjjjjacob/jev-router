@@ -1,0 +1,56 @@
+#!/bin/bash
+# Hook launcher: run <on-prompt|on-agent|gate> [--from-skill]
+#
+# Runs scripts/<name>.ts with Bun, or with Node 22.18+ (built-in TypeScript type stripping).
+# Always exits 0: a missing runtime or a crash must never block or clutter a session.
+#
+# --from-skill marks the copy of the hooks declared in skills/jev/SKILL.md frontmatter.
+# Those exist for skill installs; inside a plugin install hooks/hooks.json already runs the
+# same hooks, so the frontmatter copy steps aside to avoid routing everything twice.
+
+from_skill=0
+if [ "${1:-}" = "--from-skill" ]; then from_skill=1; shift; fi
+dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+name="${1:-}"
+
+drain() { cat > /dev/null; exit 0; }
+
+if [ "$from_skill" = 1 ] && [ -f "$dir/../../../.claude-plugin/plugin.json" ]; then drain; fi
+if [ "$name" = "gate" ]; then bash "$dir/gate.sh"; exit 0; fi
+script="$dir/$name.ts"
+[ -f "$script" ] || drain
+
+runtime="${JEV_ROUTER_RUNTIME:-}"
+
+if [ "$runtime" != "node" ]; then
+  bun_bin="$(command -v bun 2>/dev/null)"
+  for candidate in "$HOME/.bun/bin/bun" /opt/homebrew/bin/bun /usr/local/bin/bun; do
+    [ -n "$bun_bin" ] && break
+    [ -x "$candidate" ] && bun_bin="$candidate"
+  done
+  if [ -n "$bun_bin" ]; then "$bun_bin" "$script"; exit 0; fi
+fi
+
+node_bin="$(command -v node 2>/dev/null)"
+for candidate in /opt/homebrew/bin/node /usr/local/bin/node; do
+  [ -n "$node_bin" ] && break
+  [ -x "$candidate" ] && node_bin="$candidate"
+done
+[ -n "$node_bin" ] || drain
+
+version="$("$node_bin" --version 2>/dev/null)"
+version="${version#v}"
+major="${version%%.*}"
+minor="${version#*.}"
+minor="${minor%%.*}"
+case "$major$minor" in *[!0-9]* | "") drain ;; esac
+
+# Type stripping is on by default from 22.18 and 23.6; 22.6-22.17 and 23.0-23.5 need the flag.
+if [ "$major" -ge 24 ] || { [ "$major" = 23 ] && [ "$minor" -ge 6 ]; } || { [ "$major" = 22 ] && [ "$minor" -ge 18 ]; }; then
+  "$node_bin" --no-warnings "$script"
+elif [ "$major" -ge 22 ] && { [ "$major" = 23 ] || [ "$minor" -ge 6 ]; }; then
+  "$node_bin" --experimental-strip-types --no-warnings "$script"
+else
+  drain
+fi
+exit 0

@@ -1,0 +1,26 @@
+{
+  "description": "jev-router: /jev turns routing on per session; prompts get a per-turn effort skill; Agent calls get a routed model",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/jev/scripts/run\" on-prompt", "timeout": 8 }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Agent",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/jev/scripts/run\" on-agent", "timeout": 8 }
+        ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/skills/jev/scripts/gate.sh\"", "timeout": 5 }
+        ]
+      }
+    ]
+  }
+}

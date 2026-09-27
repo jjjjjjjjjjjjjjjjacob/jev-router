@@ -1,0 +1,33 @@
+---
+description: jev-router implementation status and next steps. Update after each task.
+alwaysApply: false
+---
+
+# jev-router implementation plan
+
+## Done
+
+- **Phase 0: mechanism proven.**
+  - A skill's `effort:` sets per-turn effort; the level reverts on the next prompt, and the cache is kept.
+  - Subagents inherit the turn's effort.
+  - `$CLAUDE_EFFORT` is unset in UserPromptSubmit, so the level is read from the transcript instead.
+- **Phase 1: effort routing core.**
+  - Prompt shaping, the Jev client, questions, policy, the prompt hook, tier skills, and the gate.
+- **Phase 2: the `/jev` command**, parsed from the raw prompt in UserPromptSubmit.
+- **Phase 3: subagent routing** by work kind (`judgment` / `delegated`) into configurable models.
+- **Phase 4: eval.** 97% acceptable, 97% within one level, 83% exact, 100% on subagents, p95 347 ms.
+- **Distribution (v0.1.0).**
+  - Plugin plus marketplace, and a skills-only install through `npx skills` or a manual copy.
+  - Runtime moved into `skills/jev/scripts/`, running on Bun or Node 22.18+.
+  - Config from plugin options, env vars, or `~/.claude/jev-router/config.json`.
+  - MIT license and CI.
+- **End-to-end checks (headless).**
+  - Plugin mode, via `--plugin-dir` and via a marketplace install.
+  - Skill mode, with project skills and a stream-json session.
+  - Covered: effort routing, continuation, subagent swaps, `/jev status`, and `/jev off`.
+
+## Next
+
+1. Confirm in an interactive session (all checks so far were headless).
+2. Consider routing text-only turns: the gate only enforces the tier skill on tool calls.
+3. Grow `eval/fixtures.jsonl` with more public cases, especially `xhigh` and `max`.

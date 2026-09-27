@@ -1,0 +1,39 @@
+{
+  "name": "jev",
+  "version": "0.1.0",
+  "description": "Per-turn effort routing and subagent model routing with TypeSafe's Jev. Off by default; turn it on for a session with /jev.",
+  "author": {
+    "name": "jjjjjjjjjjjjjjjjacob",
+    "url": "https://github.com/jjjjjjjjjjjjjjjjacob"
+  },
+  "homepage": "https://github.com/jjjjjjjjjjjjjjjjacob/jev-router",
+  "repository": "https://github.com/jjjjjjjjjjjjjjjjacob/jev-router",
+  "license": "MIT",
+  "keywords": ["effort", "routing", "subagents", "typesafe", "jev"],
+  "userConfig": {
+    "typesafe_api_key": {
+      "type": "string",
+      "title": "TypeSafe API key",
+      "description": "Key for api.typesafe.ai (console.typesafe.ai/keys). Leave empty to use TYPESAFE_API_KEY or JEV_API_KEY from the environment.",
+      "sensitive": true
+    },
+    "judgment_model": {
+      "type": "string",
+      "title": "Model for judgment subagents",
+      "description": "Subagents doing review, verification, design, or root-cause debugging run on this model alias.",
+      "default": "opus"
+    },
+    "delegated_model": {
+      "type": "string",
+      "title": "Model for delegated subagents",
+      "description": "Subagents doing well-scoped implementation, research, search, or mechanical edits run on this model alias.",
+      "default": "sonnet"
+    },
+    "route_subagents": {
+      "type": "boolean",
+      "title": "Route subagent models",
+      "description": "Rewrite each Agent call's model while /jev is on. Turn off to route effort only.",
+      "default": true
+    }
+  }
+}
